@@ -123,6 +123,21 @@ def get_dns_success_metric(value: int | None = None) -> GaugeMetricFamily:
     )
 
 
+def get_dns_dnssec_metric(value: int | None = None) -> GaugeMetricFamily:
+    """``dnsexp_dns_query_dnssec`` is a Gauge set to 1 when a DNS query response validates DNSSEC, or 0 otherwise.
+
+    A DNS query response is considered to validate DNSSEC if the AD flag is set in the response and
+    there are no DNSSEC validation errors. If the AD flag is not set or there are DNSSEC validation
+    errors then this metric is set to 0. If DNSSEC validation was not performed (because it was not
+    requested in the config) then this metric is not set at all.
+    """
+    return GaugeMetricFamily(
+        name="dnsexp_dns_query_dnssec",
+        documentation="Does this DNS query response validate DNSSEC, 1 for yes or 0 for no.",
+        value=value,
+    )
+
+
 def get_dns_ttl_metric() -> GaugeMetricFamily:
     """``dnsexp_dns_response_rr_ttl_seconds`` is a Gauge which tracks the TTL of individual response RRs.
 

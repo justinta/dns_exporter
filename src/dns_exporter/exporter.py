@@ -622,10 +622,12 @@ class DNSExporter(MetricsHandler):
 
         # prepare query
         qname = dns.name.from_text(str(self.config.query_name))
+        dnssec = bool(self.config.validate_dnssec)
         q = dns.message.make_query(
             qname=qname,
             rdtype=str(self.config.query_type),
             rdclass=self.config.query_class,
+            want_dnssec=dnssec,
         )
 
         # use EDNS?
@@ -666,6 +668,12 @@ class DNSExporter(MetricsHandler):
         # set RD flag?
         if self.config.recursion_desired:
             q.flags |= dns.flags.RD
+
+        if self.config.validate_dnssec:
+            # set the AD flag in the query
+            flags = dns.flags.to_text(q.flags).split()
+            flags.append('AD') 
+            q.flags = dns.flags.from_text(' '.join(flags))
 
         # register the DNSCollector in dnsexp_registry
         dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)

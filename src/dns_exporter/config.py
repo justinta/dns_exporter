@@ -279,6 +279,9 @@ class Config:
     query_name: str | None = field(default_factory=lambda: None)
     """str | None: The name to ask for in the DNS query. Default is ``None``"""
 
+    validate_dnssec: bool = field(default_factory=lambda: False)
+    """bool: Set this bool to ``True`` to enable DNSSEC validation of DNS responses"""
+
     def validate_bools(self) -> None:
         """Validate bools."""
         for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired", "verify_certificate"]:
@@ -385,6 +388,7 @@ class Config:
         validate_authority_rrs: RRValidator | None = None,
         validate_additional_rrs: RRValidator | None = None,
         validate_response_flags: RFValidator | None = None,
+        validate_dnssec: RFValidator | None = None,
         valid_rcodes: list[str] | None = None,
         verify_certificate: bool = True,
         verify_certificate_path: str = "",
@@ -430,6 +434,7 @@ class Config:
             validate_authority_rrs=validate_authority_rrs,
             validate_additional_rrs=validate_additional_rrs,
             validate_response_flags=validate_response_flags,
+            validate_dnssec=validate_dnssec,
             valid_rcodes=list(valid_rcodes),
             verify_certificate=verify_certificate,
             verify_certificate_path=verify_certificate_path,
@@ -475,6 +480,7 @@ class ConfigDict(t.TypedDict, total=False):
     validate_answer_rrs: RRValidator
     validate_authority_rrs: RRValidator
     validate_additional_rrs: RRValidator
+    validate_dnssec: RFValidator
     validate_response_flags: RFValidator
     valid_rcodes: list[str]
     verify_certificate: bool
