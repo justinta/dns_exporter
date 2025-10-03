@@ -406,7 +406,11 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
+<<<<<<< HEAD
             one_rr_per_rrset=False if self.config.validate_dnssec else True,
+=======
+            one_rr_per_rrset=False,
+>>>>>>> 8b3b7ea (Add support for dnssec validation)
         )
 
     def get_dns_response_tcp(self, query: Message, ip: str, port: int, timeout: float) -> Message | None:
@@ -416,7 +420,11 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
+<<<<<<< HEAD
             one_rr_per_rrset=False if self.config.validate_dnssec else True,
+=======
+            one_rr_per_rrset=False,
+>>>>>>> 8b3b7ea (Add support for dnssec validation)
         )
 
     def get_dns_response_udptcp(self, query: Message, ip: str, port: int, timeout: float) -> tuple[Message | None, str]:
@@ -426,7 +434,11 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
+<<<<<<< HEAD
             one_rr_per_rrset=False if self.config.validate_dnssec else True,
+=======
+            one_rr_per_rrset=False,
+>>>>>>> 8b3b7ea (Add support for dnssec validation)
         )
         return r, "TCP" if tcp else "UDP"
 
@@ -554,6 +566,7 @@ class DNSCollector(Collector):
             dnskey_rrset = response.answer[0]
             rrsig_rrset = response.answer[1]
 
+            # Prepare the keys dictionary
             # The validation function needs the keys in a dictionary keyed by name
             qname = dns.name.from_text(self.config.query_name)
             keys = {qname: dnskey_rrset}
