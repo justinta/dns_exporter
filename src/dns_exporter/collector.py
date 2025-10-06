@@ -698,24 +698,8 @@ class DNSCollector(Collector):
             self.validate_response_rcode(response=response)
         
         #validate dnssec?
-        print("****************")
-        print("")
-        print("")
-        print("Validate DNSSEC config:", self.config.validate_dnssec)
-        print("Query type:", self.config.query_type)
-        print("")
-        print("")
-        print("****************")
         if bool(self.config.validate_dnssec) and self.config.query_type == "DNSKEY":
-                print("****************")
-                print("")
-                print("")
-                print("Validating DNSSEC...")
-                print("")
-                print("")
-                print("****************")
-                self.validate_dnssec(response=response)
-            
+            self.validate_dnssec(response=response)
 
         # validate flags?
         if self.config.validate_response_flags:
