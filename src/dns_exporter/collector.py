@@ -552,7 +552,6 @@ class DNSCollector(Collector):
             dnskey_rrset = response.answer[0]
             rrsig_rrset = response.answer[1]
 
-            # Prepare the keys dictionary
             # The validation function needs the keys in a dictionary keyed by name
             qname = dns.name.from_text(self.config.query_name)
             keys = {qname: dnskey_rrset}
