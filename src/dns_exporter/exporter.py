@@ -212,10 +212,11 @@ class DNSExporter(MetricsHandler):
         collect_ttl: Literal["collect_ttl"] = "collect_ttl"
         edns: Literal["edns"] = "edns"
         edns_do: Literal["edns_do"] = "edns_do"
+        validate_dnssec: Literal["validate_dnssec"] = "validate_dnssec"
         recursion_desired: Literal["recursion_desired"] = "recursion_desired"
         verify_certificate: Literal["verify_certificate"] = "verify_certificate"
         try:
-            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate]:
+            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate, validate_dnssec]:
                 if key not in config:
                     continue
                 if isinstance(config[key], str):

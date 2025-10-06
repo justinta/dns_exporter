@@ -225,13 +225,13 @@ class DNSCollector(Collector):
         try:
             self.validate_response(response=response)
             self.increase_failure_reason_metric(failure_reason="", labels=self.labels)
-            if self.config.validate_dnssec:
+            if self.config.validate_dnssec and self.config.query_type == "DNSKEY":
                 yield get_dns_dnssec_metric(1)
             yield get_dns_success_metric(1)
         except ValidationError as E:
             logger.exception(f"Validation failed: {E.args[1]}")
             self.increase_failure_reason_metric(failure_reason=E.args[1], labels=self.labels)
-            if self.config.validate_dnssec:
+            if self.config.validate_dnssec and self.config.query_type == "DNSKEY":
                 yield get_dns_dnssec_metric(0)
             yield get_dns_success_metric(0)
 
@@ -406,7 +406,7 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
-            one_rr_per_rrset=False,
+            one_rr_per_rrset=False if self.config.validate_dnssec else True,
         )
 
     def get_dns_response_tcp(self, query: Message, ip: str, port: int, timeout: float) -> Message | None:
@@ -416,7 +416,7 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
-            one_rr_per_rrset=False,
+            one_rr_per_rrset=False if self.config.validate_dnssec else True,
         )
 
     def get_dns_response_udptcp(self, query: Message, ip: str, port: int, timeout: float) -> tuple[Message | None, str]:
@@ -426,7 +426,7 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
-            one_rr_per_rrset=False,
+            one_rr_per_rrset=False if self.config.validate_dnssec else True,
         )
         return r, "TCP" if tcp else "UDP"
 
@@ -698,8 +698,24 @@ class DNSCollector(Collector):
             self.validate_response_rcode(response=response)
         
         #validate dnssec?
-        if self.config.validate_dnssec:
-            self.validate_dnssec(response=response)
+        print("****************")
+        print("")
+        print("")
+        print("Validate DNSSEC config:", self.config.validate_dnssec)
+        print("Query type:", self.config.query_type)
+        print("")
+        print("")
+        print("****************")
+        if bool(self.config.validate_dnssec) and self.config.query_type == "DNSKEY":
+                print("****************")
+                print("")
+                print("")
+                print("Validating DNSSEC...")
+                print("")
+                print("")
+                print("****************")
+                self.validate_dnssec(response=response)
+            
 
         # validate flags?
         if self.config.validate_response_flags:
