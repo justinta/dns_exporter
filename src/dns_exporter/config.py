@@ -265,7 +265,7 @@ class Config:
     """bool: Set this to the path of a CA dir or CA file to override the default system CA when verifying certificates
     of encrypted DNS servers. Leave empty to use the default system CA path. Default is an empty string."""
 
-    validate_dnssec: bool   #= field(default_factory=lambda: False)
+    validate_dnssec: bool
     """bool: Set this bool to ``True`` to enable DNSSEC validation of DNS responses"""
 
     # optional settings (but required in final config)
@@ -287,8 +287,6 @@ class Config:
         """Validate bools."""
         for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired", "verify_certificate", "validate_dnssec"]:
             # validate bools
-            print(key)
-            print(type(getattr(self, key)))
             if not isinstance(getattr(self, key), bool):
                 logger.error(f"Not a bool: {key}")
                 raise ConfigError("invalid_request_config")
