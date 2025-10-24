@@ -600,7 +600,7 @@ class DNSExporter(MetricsHandler):
         return url, qs
 
     def get_query(self) -> QueryMessage:
-        """Build and return the dns.query.Query object."""
+        """Build and return the dns.message.QueryMessage object."""
         # prepare query
         qname = dns.name.from_text(str(self.config.query_name))
         dnssec = bool(self.config.validate_dnssec)
