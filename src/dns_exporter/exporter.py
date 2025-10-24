@@ -694,6 +694,8 @@ class DNSExporter(MetricsHandler):
         # set RD flag?
         if self.config.recursion_desired:
             q.flags |= dns.flags.RD
+        else:
+            q.flags &= ~dns.flags.RD
 
         if self.config.validate_dnssec:
             # set the AD flag in the query
