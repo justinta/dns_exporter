@@ -406,11 +406,7 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
-<<<<<<< HEAD
             one_rr_per_rrset=False if self.config.validate_dnssec else True,
-=======
-            one_rr_per_rrset=False,
->>>>>>> 8b3b7ea (Add support for dnssec validation)
         )
 
     def get_dns_response_tcp(self, query: Message, ip: str, port: int, timeout: float) -> Message | None:
@@ -420,11 +416,7 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
-<<<<<<< HEAD
             one_rr_per_rrset=False if self.config.validate_dnssec else True,
-=======
-            one_rr_per_rrset=False,
->>>>>>> 8b3b7ea (Add support for dnssec validation)
         )
 
     def get_dns_response_udptcp(self, query: Message, ip: str, port: int, timeout: float) -> tuple[Message | None, str]:
@@ -434,11 +426,7 @@ class DNSCollector(Collector):
             where=ip,
             port=port,
             timeout=timeout,
-<<<<<<< HEAD
             one_rr_per_rrset=False if self.config.validate_dnssec else True,
-=======
-            one_rr_per_rrset=False,
->>>>>>> 8b3b7ea (Add support for dnssec validation)
         )
         return r, "TCP" if tcp else "UDP"
 
