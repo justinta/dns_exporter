@@ -212,10 +212,11 @@ class DNSExporter(MetricsHandler):
         collect_ttl: Literal["collect_ttl"] = "collect_ttl"
         edns: Literal["edns"] = "edns"
         edns_do: Literal["edns_do"] = "edns_do"
+        validate_dnssec: Literal["validate_dnssec"] = "validate_dnssec"
         recursion_desired: Literal["recursion_desired"] = "recursion_desired"
         verify_certificate: Literal["verify_certificate"] = "verify_certificate"
         try:
-            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate]:
+            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate, validate_dnssec]:
                 if key not in config:
                     continue
                 if isinstance(config[key], str):
@@ -646,7 +647,60 @@ class DNSExporter(MetricsHandler):
             }
         )
 
-        q = get_query(config=self.config)
+        # prepare query
+        qname = dns.name.from_text(str(self.config.query_name))
+        dnssec = bool(self.config.validate_dnssec)
+        q = dns.message.make_query(
+            qname=qname,
+            rdtype=str(self.config.query_type),
+            rdclass=self.config.query_class,
+            want_dnssec=dnssec,
+        )
+
+        # use EDNS?
+        if self.config.edns:
+            # use edns
+            ednsargs: dict[
+                str,
+                str | int | bool | list[dns.edns.GenericOption],
+            ] = {"options": []}
+            # use the DO bit?
+            if self.config.edns_do:
+                ednsargs["ednsflags"] = dns.flags.DO
+            # use nsid?
+            if self.config.edns_nsid:
+                ednsargs["options"].append(  # type: ignore[union-attr]
+                    dns.edns.GenericOption(dns.edns.NSID, ""),
+                )
+            # set bufsize/payload?
+            if self.config.edns_bufsize:
+                # dnspython calls bufsize "payload"
+                ednsargs["payload"] = int(self.config.edns_bufsize)
+            # set edns padding?
+            if self.config.edns_pad:
+                ednsargs["options"].append(  # type: ignore[union-attr]
+                    dns.edns.GenericOption(
+                        dns.edns.PADDING,
+                        bytes(int(self.config.edns_pad)),
+                    ),
+                )
+            # enable edns with the chosen options
+            q.use_edns(edns=0, **ednsargs)  # type: ignore[arg-type]
+            logger.debug(f"using edns options {ednsargs}")
+        else:
+            # do not use edns
+            q.use_edns(edns=False)
+            logger.debug("not using edns")
+
+        # set RD flag?
+        if self.config.recursion_desired:
+            q.flags |= dns.flags.RD
+
+        if self.config.validate_dnssec:
+            # set the AD flag in the query
+            flags = dns.flags.to_text(q.flags).split()
+            flags.append('AD') 
+            q.flags = dns.flags.from_text(' '.join(flags))
 
         # register the DNSCollector in dnsexp_registry
         dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)
@@ -725,10 +779,12 @@ def get_query(config: Config) -> QueryMessage:
     """Build and return the dns.message.QueryMessage object."""
     # prepare query
     qname = dns.name.from_text(str(config.query_name))
+    dnssec = bool(config.validate_dnssec)
     q = dns.message.make_query(
         qname=qname,
         rdtype=str(config.query_type),
         rdclass=config.query_class,
+        want_dnssec=dnssec,
     )
 
     # use EDNS?

@@ -265,6 +265,9 @@ class Config:
     """bool: Set this to the path of a CA dir or CA file to override the default system CA when verifying certificates
     of encrypted DNS servers. Leave empty to use the default system CA path. Default is an empty string."""
 
+    validate_dnssec: bool
+    """bool: Set this bool to ``True`` to enable DNSSEC validation of DNS responses"""
+
     # optional settings (but required in final config)
 
     ip: IPv4Address | IPv6Address | None = field(
@@ -279,9 +282,12 @@ class Config:
     query_name: str | None = field(default_factory=lambda: None)
     """str | None: The name to ask for in the DNS query. Default is ``None``"""
 
+    validate_dnssec: bool = field(default_factory=lambda: False)
+    """bool: Set this bool to ``True`` to enable DNSSEC validation of DNS responses"""
+
     def validate_bools(self) -> None:
         """Validate bools."""
-        for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired", "verify_certificate"]:
+        for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired", "verify_certificate", "validate_dnssec"]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
                 logger.error(f"Not a bool: {key}")
@@ -381,10 +387,12 @@ class Config:
         recursion_desired: bool = True,
         proxy: urllib.parse.SplitResult | None = None,
         timeout: float = 5.0,
+        validate_dnssec: bool = False,
         validate_answer_rrs: RRValidator | None = None,
         validate_authority_rrs: RRValidator | None = None,
         validate_additional_rrs: RRValidator | None = None,
         validate_response_flags: RFValidator | None = None,
+        #validate_dnssec: RFValidator | None = None,
         valid_rcodes: list[str] | None = None,
         verify_certificate: bool = True,
         verify_certificate_path: str = "",
@@ -426,10 +434,12 @@ class Config:
             recursion_desired=recursion_desired,
             proxy=proxy,
             timeout=float(timeout),
+            validate_dnssec=validate_dnssec,
             validate_answer_rrs=validate_answer_rrs,
             validate_authority_rrs=validate_authority_rrs,
             validate_additional_rrs=validate_additional_rrs,
             validate_response_flags=validate_response_flags,
+            validate_dnssec=validate_dnssec,
             valid_rcodes=list(valid_rcodes),
             verify_certificate=verify_certificate,
             verify_certificate_path=verify_certificate_path,
@@ -472,9 +482,11 @@ class ConfigDict(t.TypedDict, total=False):
     query_type: str
     recursion_desired: bool
     timeout: float
+    validate_dnssec: bool
     validate_answer_rrs: RRValidator
     validate_authority_rrs: RRValidator
     validate_additional_rrs: RRValidator
+    validate_dnssec: RFValidator
     validate_response_flags: RFValidator
     valid_rcodes: list[str]
     verify_certificate: bool
