@@ -439,7 +439,6 @@ class Config:
             validate_authority_rrs=validate_authority_rrs,
             validate_additional_rrs=validate_additional_rrs,
             validate_response_flags=validate_response_flags,
-            validate_dnssec=validate_dnssec,
             valid_rcodes=list(valid_rcodes),
             verify_certificate=verify_certificate,
             verify_certificate_path=verify_certificate_path,
