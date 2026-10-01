@@ -218,10 +218,11 @@ class DNSExporter(MetricsHandler):
         connection_reuse: Literal["connection_reuse"] = "connection_reuse"
         edns: Literal["edns"] = "edns"
         edns_do: Literal["edns_do"] = "edns_do"
+        validate_dnssec: Literal["validate_dnssec"] = "validate_dnssec"
         recursion_desired: Literal["recursion_desired"] = "recursion_desired"
         verify_certificate: Literal["verify_certificate"] = "verify_certificate"
         try:
-            for key in [collect_ttl, connection_reuse, edns, edns_do, recursion_desired, verify_certificate]:
+            for key in [collect_ttl, connection_reuse, edns, edns_do, recursion_desired, verify_certificate, validate_dnssec]:
                 if key not in config:
                     continue
                 if isinstance(config[key], str):
@@ -733,10 +734,12 @@ def get_query(config: Config) -> QueryMessage:
     """Build and return the dns.message.QueryMessage object."""
     # prepare query
     qname = dns.name.from_text(str(config.query_name))
+    dnssec = bool(config.validate_dnssec)
     q = dns.message.make_query(
         qname=qname,
         rdtype=str(config.query_type),
         rdclass=config.query_class,
+        want_dnssec=dnssec,
     )
 
     # use EDNS?
@@ -779,6 +782,11 @@ def get_query(config: Config) -> QueryMessage:
         q.flags |= dns.flags.RD
     else:
         q.flags &= ~dns.flags.RD
+
+    if config.validate_dnssec:
+        q.flags |= dns.flags.AD
+    else:
+        q.flags &= ~dns.flags.AD
 
     # go
     return q

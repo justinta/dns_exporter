@@ -13,6 +13,7 @@ import urllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import dns.dnssec
 import dns.edns
 import dns.exception
 import dns.flags
@@ -46,6 +47,7 @@ from dns_exporter.metrics import (
     dnsexp_scrape_failures_total,
     get_dns_qtime_metric,
     get_dns_success_metric,
+    get_dns_dnssec_metric,
     get_dns_ttl_metric,
 )
 from dns_exporter.socket_cache import DoHSocket, DoTSocket, PlainSocket, QUICSocket, SocketCache
@@ -135,6 +137,7 @@ class DNSCollector(Collector):
         """Describe the metrics that are to be returned by this collector."""
         yield get_dns_qtime_metric()
         yield get_dns_success_metric()
+        #yield get_dns_dnssec_metric()
         yield get_dns_ttl_metric()
         yield from self.collect_up()
 
@@ -271,10 +274,14 @@ class DNSCollector(Collector):
         try:
             self.validate_response(response=response)
             self.increase_failure_reason_metric(failure_reason="", labels=self.labels)
+            if self.config.validate_dnssec and self.config.query_type == "DNSKEY":
+                yield get_dns_dnssec_metric(1)
             yield get_dns_success_metric(1)
         except ValidationError as E:
             logger.debug(f"Validation failed: {E.args[1]}")
             self.increase_failure_reason_metric(failure_reason=E.args[1], labels=self.labels)
+            if self.config.validate_dnssec and self.config.query_type == "DNSKEY":
+                yield get_dns_dnssec_metric(0)
             yield get_dns_success_metric(0)
 
     def handle_response_options(self, response: Message) -> None:
@@ -436,7 +443,7 @@ class DNSCollector(Collector):
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
-                one_rr_per_rrset=True,
+                one_rr_per_rrset=False if self.config.validate_dnssec else True,
                 raise_on_truncation=True,
                 sock=self.sock.socket if self.config.connection_reuse else None,
             )
@@ -465,7 +472,7 @@ class DNSCollector(Collector):
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
-                one_rr_per_rrset=True,
+                one_rr_per_rrset=False if self.config.validate_dnssec else True,
                 sock=self.sock.socket if self.config.connection_reuse else None,
             )
         finally:
@@ -667,6 +674,31 @@ class DNSCollector(Collector):
                 "rcode_validator",
                 "invalid_response_rcode",
             )
+    
+    def validate_dnssec(self, response: Message) -> None:
+        """Validate response DNSSEC."""
+        if response.rcode() != 0 or len(response.answer) < 2:
+            raise ValidationError(
+                "dnssec_validator",
+                "dnssec_records_missing",
+            )
+        else:
+            dnskey_rrset = response.answer[0]
+            rrsig_rrset = response.answer[1]
+
+            # Prepare the keys dictionary
+            # The validation function needs the keys in a dictionary keyed by name
+            qname = dns.name.from_text(self.config.query_name)
+            keys = {qname: dnskey_rrset}
+
+            # Validate the RRset
+            try:
+                dns.dnssec.validate(rrset=dnskey_rrset, rrsigset=rrsig_rrset, keys=keys)
+            except dns.dnssec.ValidationFailure as e:
+                raise ValidationError(
+                    "dnssec_validator",
+                    e,
+                )
 
     def validate_response_flags(self, response: Message) -> None:  # noqa: PLR0912 C901
         """Validate response flags."""
@@ -805,6 +837,10 @@ class DNSCollector(Collector):
         # validate the response rcode?
         if self.config.valid_rcodes:
             self.validate_response_rcode(response=response)
+        
+        #validate dnssec?
+        if bool(self.config.validate_dnssec) and self.config.query_type == "DNSKEY":
+            self.validate_dnssec(response=response)
 
         # validate flags?
         if self.config.validate_response_flags:
