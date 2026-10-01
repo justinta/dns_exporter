@@ -23,14 +23,13 @@ There is also a Docker image so you can get your container on:
 
 `docker run -p 15353:15353 tykling/dns_exporter:latest`
 
-There is also a Kubernetes Helm Chart (maintained by @christianhuth) available on [https://artifacthub.io/packages/helm/christianhuth/dns-exporter](ArtifactHUB).
+There is also a Kubernetes Helm Chart (maintained by @christianhuth) available on [ArtifactHUB](https://artifacthub.io/packages/helm/christianhuth/dns-exporter).
 
+# Python Support
+Python 3.10, 3.11, 3.12, 3.13 and 3.14 are fully supported. `dns_exporter` aims to follow the [officially supported](https://devguide.python.org/versions/) Python versions.
 
 # Documentation
 The documentation is available on [ReadTheDocs](https://dns-exporter.readthedocs.io/latest/)
 
 # Grafana Dashboard
 There is a [Grafana dashboard](https://grafana.com/grafana/dashboards/20617-dns-exporter/) you can use as a starting point for your own dashboards.
-
-# Fancy Repo Activity Graphics
-![Alt](https://repobeats.axiom.co/api/embed/3c531c8db07c5982061d4c6e800238c7ddf8ab59.svg "Repobeats analytics image")

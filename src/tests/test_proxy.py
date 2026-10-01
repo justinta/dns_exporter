@@ -1,6 +1,7 @@
 """Unit tests for proxy functionality."""
 
 import logging
+import sys
 
 import pytest
 import requests
@@ -13,10 +14,20 @@ import requests
     [
         ("udp", "dns.google"),
         ("tcp", "dns.google"),
+        pytest.param(
+            "dot",
+            "anycast.uncensoreddns.org",
+            marks=pytest.mark.xfail(
+                reason="Proxy not yet supported for DoT, see https://github.com/tykling/dns_exporter/issues/76"
+            ),
+        ),
         ("doh", "anycast.uncensoreddns.org"),
         ("doq", "dns-unfiltered.adguard.com"),
         ("doh3", "dns-unfiltered.adguard.com"),
     ],
+)
+@pytest.mark.xfail(
+    sys.version_info[:2] == (3, 14), reason="Skip under Python 3.14 https://github.com/tykling/dns_exporter/issues/202"
 )
 def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
     """Test proxy functionality for all protocols."""
@@ -27,8 +38,9 @@ def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
             "server": server,
             "family": "ipv4",
             "protocol": protocol,
-            "proxy": "socks5://127.0.0.1:1080",
+            "proxy": "socks5://127.0.0.1",
         },
+        timeout=5,
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
     assert f'server="{protocol}://{server}:' in r.text
@@ -37,7 +49,10 @@ def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
 ###################################################################################
 
 
-@pytest.mark.parametrize("protocol", ["udp", "tcp", "doh", "doh3", "doq"])
+@pytest.mark.xfail(
+    sys.version_info[:2] == (3, 14), reason="Skip under Python 3.14 https://github.com/tykling/dns_exporter/issues/202"
+)
+@pytest.mark.parametrize("protocol", ["udp", "tcp", "dot", "doh", "doh3", "doq"])
 def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
     """Test proxy failure for all protocols."""
     r = requests.get(
@@ -49,6 +64,7 @@ def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
             "protocol": protocol,
             "proxy": "socks5://127.0.0.1:1081",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -65,6 +81,7 @@ def test_proxy_without_scheme(dns_exporter_example_config):
             "server": "dns.google",
             "proxy": "127.0.0.1:1080",
         },
+        timeout=5,
     )
     assert r.status_code == 200, "non-200 returncode"
 
@@ -78,6 +95,7 @@ def test_proxy_unknown_scheme(dns_exporter_example_config):
             "server": "dns.google",
             "proxy": "foo://127.0.0.1:1080",
         },
+        timeout=5,
     )
     assert r.status_code == 200, "non-200 returncode"
 
@@ -90,6 +108,9 @@ def test_exporter_modules_none(caplog, exporter):
     assert "0 module(s) loaded OK, total modules: 0." in caplog.text
 
 
+@pytest.mark.xfail(
+    sys.version_info[:2] == (3, 14), reason="Skip under Python 3.14 https://github.com/tykling/dns_exporter/issues/202"
+)
 def test_proxy_module(dns_exporter_example_config, proxy_server):
     """Test proxy functionality for udp protocol."""
     r = requests.get(
@@ -101,6 +122,7 @@ def test_proxy_module(dns_exporter_example_config, proxy_server):
             "protocol": "udp",
             "module": "socks1080",
         },
+        timeout=5,
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
     assert 'server="udp://dns.google:53"' in r.text

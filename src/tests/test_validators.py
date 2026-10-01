@@ -22,6 +22,7 @@ www.example.com. 1800 IN CNAME www.example.com.edgekey.net.
 www.example.com.edgekey.net. 18416 IN CNAME www.example.com.edgekey.net.globalredir.exampledns.net.
 www.example.com.edgekey.net.globalredir.exampledns.net. 900 IN CNAME abc.dscc.exampleedge.net.
 abc.dscc.exampleedge.net. 20 IN A 10.8.23.42
+abc.dscc.exampleedge.net. 20 IN AAAA fd00:dead:beef::23:42
 ;AUTHORITY
 ;ADDITIONAL
 """)
@@ -33,9 +34,10 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
-            "query_name": "404.example.com",
+            "query_name": "donoevil.google.com",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'rcode="NXDOMAIN"' in r.text
     assert "dnsexp_dns_query_success 0.0" in r.text
@@ -47,10 +49,11 @@ def test_validate_rcode_2(dns_exporter_example_config, caplog):
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
-            "query_name": "404.example.com",
+            "query_name": "donoevil.google.com",
             "family": "ipv4",
-            "valid_rcodes": "NXDOMAIN,NOERROR",
+            "valid_rcodes": "NXDOMAIN",
         },
+        timeout=5,
     )
     assert 'rcode="NXDOMAIN"' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -69,6 +72,7 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "module": "has_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -83,6 +87,7 @@ def test_validate_flags_fail_if_any_absent_2(dns_exporter_example_config, caplog
             "family": "ipv4",
             "module": "has_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -100,6 +105,7 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
             "family": "ipv4",
             "module": "has_no_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -114,6 +120,7 @@ def test_validate_flags_fail_if_any_present_2(dns_exporter_example_config, caplo
             "family": "ipv4",
             "module": "has_no_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -131,6 +138,7 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
             "family": "ipv4",
             "module": "fail_not_auth",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -145,6 +153,7 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
             "family": "ipv4",
             "module": "fail_not_auth",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -160,6 +169,7 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
             "family": "ipv4",
             "module": "fail_recursive",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -177,6 +187,7 @@ def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "module": "fail_recursive",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -191,6 +202,7 @@ def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog
             "family": "ipv4",
             "module": "fail_recursive",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -205,6 +217,7 @@ def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog
             "family": "ipv4",
             "module": "fail_not_auth",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -223,6 +236,7 @@ def test_validate_rrs_fail_if_matches_regexp(dns_exporter_example_config, caplog
             "query_type": "NS",
             "module": "fail_auth_k_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -238,6 +252,7 @@ def test_validate_rrs_fail_if_matches_regexp_2(dns_exporter_example_config, capl
             "query_type": "NS",
             "module": "fail_auth_k_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -256,6 +271,7 @@ def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, capl
             "query_type": "NS",
             "module": "fail_additional_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -271,6 +287,7 @@ def test_validate_rrs_fail_if_all_match_regexp_2(dns_exporter_example_config, ca
             "query_type": "NS",
             "module": "fail_additional_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -289,6 +306,7 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
             "query_type": "NS",
             "module": "fail_answer_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -304,6 +322,7 @@ def test_validate_rrs_fail_if_not_matches_regexp_2(dns_exporter_example_config, 
             "query_type": "NS",
             "module": "fail_additional_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -322,6 +341,7 @@ def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, c
             "query_type": "NS",
             "module": "fail_answer_root_none",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -340,6 +360,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
             "query_type": "NS",
             "module": "fail_answer_root_none",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -355,6 +376,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config,
             "query_type": "NS",
             "module": "fail_answer_root_none",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -363,13 +385,16 @@ def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config,
     ("regex_list", "expectation"),
     [
         ([".*"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42"], pytest.raises(ValidationError)),
+        ([".*10.8.23.42$"], pytest.raises(ValidationError)),
         ([".*127.0.0.1", ".*CNAME\\sabc.dscc.exampleedge.net"], pytest.raises(ValidationError)),
         ([".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1", "192.168.32.42"], does_not_raise()),
+        ([".*beef.*"], pytest.raises(ValidationError)),
+        (["(?i).*BEEF.*"], pytest.raises(ValidationError)),
+        ([".*c0DE.*"], does_not_raise()),
     ],
 )
-def test_fail_if_matches_regexp(regex_list, expectation, caplog):
+def test_fail_if_matches_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_matches_regexp.
 
     consider request failed if any answer rr matches one of these regexes
@@ -378,7 +403,7 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -393,13 +418,13 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
     ("regex_list", "expectation"),
     [
         ([".*"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42", ".*CNAME.*"], pytest.raises(ValidationError)),
+        ([".*10.8.23.42", ".*CNAME.*", "(?i).*BEEF.*"], pytest.raises(ValidationError)),
         ([".*10.8.23.42"], does_not_raise()),
         ([".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1", ".*CNAME.*"], does_not_raise()),
     ],
 )
-def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
+def test_fail_if_all_match_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_all_match_regexp.
 
     consider request failed if all answer rrs match one of these regexes
@@ -408,7 +433,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_all_match_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -424,12 +449,12 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
     [
         ([".*"], does_not_raise()),
         ([".*10.8.23.42"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42", ".*CNAME.*"], does_not_raise()),
+        ([".*10.8.23.42", ".*CNAME.*", ".*beef.*", ".*BEEF.*"], does_not_raise()),
         ([".*10.8.23.42", ".*127.0.0.1"], pytest.raises(ValidationError)),
         ([".*127.0.0.1"], pytest.raises(ValidationError)),
     ],
 )
-def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
+def test_fail_if_not_matches_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_not_matches_regexp.
 
     consider request failed if any answer rr does not match one of these regexes
@@ -438,7 +463,7 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_not_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -457,10 +482,12 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
         ([".*10.8.23.42", ".*CNAME.*"], does_not_raise()),
         ([".*10.8.23.42", ".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1"], pytest.raises(ValidationError)),
+        ([".*127.0.0.1", "(?i).*ABC"], does_not_raise()),
         ([".*127.0.0.1", ".*ABC"], pytest.raises(ValidationError)),
+        ([".*127.0.0.1", ".*XYZ"], pytest.raises(ValidationError)),
     ],
 )
-def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
+def test_fail_if_none_matches_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_none_matches_regexp.
 
     consider request failed if none of the answer rrs match one of these regexes
@@ -469,7 +496,7 @@ def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_none_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)

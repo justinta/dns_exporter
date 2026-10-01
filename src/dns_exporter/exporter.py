@@ -37,6 +37,7 @@ from dns_exporter.collector import DNSCollector, FailCollector
 from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
 from dns_exporter.exceptions import ConfigError
 from dns_exporter.metrics import QTIME_LABELS, dnsexp_http_requests_total, dnsexp_http_responses_total
+from dns_exporter.socket_cache import SocketCache
 from dns_exporter.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -44,6 +45,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from prometheus_client.registry import RestrictedRegistry
 
 logger = logging.getLogger(f"dns_exporter.{__name__}")
+socket_cache = SocketCache()
 
 INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -76,6 +78,9 @@ class DNSExporter(MetricsHandler):
 
     # the modules key is populated by configure() before the class is initialised
     modules: dict[str, Config] | None = None
+
+    # bool to control the inclusion of the connection label
+    connection_label: bool = False
 
     @classmethod
     def prepare_config_rrvalidators(
@@ -188,7 +193,7 @@ class DNSExporter(MetricsHandler):
         try:
             for key in [timeout]:
                 if key in config:
-                    if isinstance(config[key], str):
+                    if isinstance(config[key], str | int):
                         tmp[key] = float(config[key])
                     elif isinstance(config[key], float):
                         # use as-is
@@ -210,13 +215,14 @@ class DNSExporter(MetricsHandler):
         tmp: ConfigDict = {}
         # use literals for TypedDict keys to make mypy happy
         collect_ttl: Literal["collect_ttl"] = "collect_ttl"
+        connection_reuse: Literal["connection_reuse"] = "connection_reuse"
         edns: Literal["edns"] = "edns"
         edns_do: Literal["edns_do"] = "edns_do"
         validate_dnssec: Literal["validate_dnssec"] = "validate_dnssec"
         recursion_desired: Literal["recursion_desired"] = "recursion_desired"
         verify_certificate: Literal["verify_certificate"] = "verify_certificate"
         try:
-            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate, validate_dnssec]:
+            for key in [collect_ttl, connection_reuse, edns, edns_do, recursion_desired, verify_certificate, validate_dnssec]:
                 if key not in config:
                     continue
                 if isinstance(config[key], str):
@@ -647,60 +653,8 @@ class DNSExporter(MetricsHandler):
             }
         )
 
-        # prepare query
-        qname = dns.name.from_text(str(self.config.query_name))
-        dnssec = bool(self.config.validate_dnssec)
-        q = dns.message.make_query(
-            qname=qname,
-            rdtype=str(self.config.query_type),
-            rdclass=self.config.query_class,
-            want_dnssec=dnssec,
-        )
-
-        # use EDNS?
-        if self.config.edns:
-            # use edns
-            ednsargs: dict[
-                str,
-                str | int | bool | list[dns.edns.GenericOption],
-            ] = {"options": []}
-            # use the DO bit?
-            if self.config.edns_do:
-                ednsargs["ednsflags"] = dns.flags.DO
-            # use nsid?
-            if self.config.edns_nsid:
-                ednsargs["options"].append(  # type: ignore[union-attr]
-                    dns.edns.GenericOption(dns.edns.NSID, ""),
-                )
-            # set bufsize/payload?
-            if self.config.edns_bufsize:
-                # dnspython calls bufsize "payload"
-                ednsargs["payload"] = int(self.config.edns_bufsize)
-            # set edns padding?
-            if self.config.edns_pad:
-                ednsargs["options"].append(  # type: ignore[union-attr]
-                    dns.edns.GenericOption(
-                        dns.edns.PADDING,
-                        bytes(int(self.config.edns_pad)),
-                    ),
-                )
-            # enable edns with the chosen options
-            q.use_edns(edns=0, **ednsargs)  # type: ignore[arg-type]
-            logger.debug(f"using edns options {ednsargs}")
-        else:
-            # do not use edns
-            q.use_edns(edns=False)
-            logger.debug("not using edns")
-
-        # set RD flag?
-        if self.config.recursion_desired:
-            q.flags |= dns.flags.RD
-
-        if self.config.validate_dnssec:
-            # set the AD flag in the query
-            flags = dns.flags.to_text(q.flags).split()
-            flags.append('AD') 
-            q.flags = dns.flags.from_text(' '.join(flags))
+        # get query message
+        q = get_query(config=self.config)
 
         # register the DNSCollector in dnsexp_registry
         dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)
@@ -726,7 +680,8 @@ class DNSExporter(MetricsHandler):
         # this endpoint exposes metrics about the exporter itself and the python process
         elif self.url.path == "/metrics":
             logger.debug("Returning exporter metrics for request to /metrics")
-            self.send_metric_response(registry=self.registry, query=self.qs)
+            socket_cache.update_metrics()
+            self.send_metric_response(registry=self.registry, query=self.qs)  # type: ignore[arg-type]
 
         # the root just returns a bit of informational html
         elif self.url.path == "/":
@@ -827,6 +782,11 @@ def get_query(config: Config) -> QueryMessage:
         q.flags |= dns.flags.RD
     else:
         q.flags &= ~dns.flags.RD
+
+    if config.validate_dnssec:
+        q.flags |= dns.flags.AD
+    else:
+        q.flags &= ~dns.flags.AD
 
     # go
     return q

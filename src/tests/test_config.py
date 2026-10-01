@@ -12,6 +12,10 @@ def test_nonbool_bool(exporter):
     """Test a bool which is not a bool."""
     with pytest.raises(ConfigError):
         exporter.prepare_config(ConfigDict(edns_do=42))
+    prepared = exporter.prepare_config(ConfigDict(edns_do=True))
+    prepared["edns_do"] = 42
+    with pytest.raises(ConfigError):
+        Config.create(name="test", **prepared)
 
 
 def test_negative_int(exporter):
@@ -62,6 +66,8 @@ def test_invalid_rfvalidator(exporter):
 
 def test_invalid_rcode(exporter):
     """Test with an invalid RCODE."""
+    with pytest.raises(ConfigError):
+        prepared = exporter.prepare_config(ConfigDict(valid_rcodes=42))
     prepared = exporter.prepare_config(ConfigDict(valid_rcodes="YESERROR"))
     with pytest.raises(ConfigError):
         Config.create(name="test", **prepared)
@@ -151,14 +157,6 @@ def test_int_proxy(exporter, caplog):
         exporter.prepare_config(ConfigDict(proxy=42))
 
 
-def test_wrongtype_bool(exporter):
-    """Test a bool of wrong type."""
-    prepared = exporter.prepare_config(ConfigDict(edns_do=True))
-    prepared["edns_do"] = 42
-    with pytest.raises(ConfigError):
-        Config.create(name="test", **prepared)
-
-
 # test querystring configuration
 
 
@@ -171,6 +169,7 @@ def test_config_querystring_rcode(dns_exporter_example_config):
             "query_name": "example.com",
             "valid_rcodes": "NXDOMAIN",
         },
+        timeout=5,
     )
     config = r.json()
     assert config["valid_rcodes"] == ["NXDOMAIN"]
@@ -185,6 +184,7 @@ def test_config_querystring_rcode_2(dns_exporter_example_config):
             "query_name": "example.com",
             "valid_rcodes": "NXDOMAIN,NOERROR",
         },
+        timeout=5,
     )
     config = r.json()
     assert config["valid_rcodes"] == ["NXDOMAIN", "NOERROR"]
