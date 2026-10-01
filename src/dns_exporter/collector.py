@@ -137,7 +137,6 @@ class DNSCollector(Collector):
         """Describe the metrics that are to be returned by this collector."""
         yield get_dns_qtime_metric()
         yield get_dns_success_metric()
-        #yield get_dns_dnssec_metric()
         yield get_dns_ttl_metric()
         yield from self.collect_up()
 

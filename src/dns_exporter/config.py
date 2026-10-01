@@ -409,7 +409,6 @@ class Config:
         validate_authority_rrs: RRValidator | None = None,
         validate_additional_rrs: RRValidator | None = None,
         validate_response_flags: RFValidator | None = None,
-        #validate_dnssec: RFValidator | None = None,
         valid_rcodes: list[str] | None = None,
         verify_certificate: bool = True,
         verify_certificate_path: str = "",
