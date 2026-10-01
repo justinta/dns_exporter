@@ -8,19 +8,144 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
-Unreleased
-----------
+
+v1.2.3 - 2026-06-01
+-------------------
+
+Fixed
+~~~~~
+Fixed listening on IPv6 addresses - thanks @lewellien !  https://github.com/tykling/dns_exporter/pull/219/ 
+
+
+v1.2.2 - 2026-03-09
+-------------------
+
+Fixed
+~~~~~
+Fixed docker image builds on 32bit platforms, thanks @bb-Ricardo !
+
+
+v1.2.1 - 2026-03-08
+-------------------
+
+Changed
+~~~~~~~
+- Change some unit tests to use donoevil.google.com instead of 404.example.com to trigger NXDOMAIN
+
+Fixed
+~~~~~
+- Pinned chardet to a version acceptable to requests (used in unit tests)
+
+
+v1.2.0 - 2026-03-08
+-------------------
+
+Changed
+~~~~~~~
+- Change some unit tests to use different portnumbers to reduce risk of race conditions failing tests
+- Change Dockerfile to use Python 3.14 and refactor it a bit, thanks @dallemon!
+- Rename socket count metric from ``dnsexp_socket_count_total`` to ``dnsexp_sockets_total``
+
+
+v1.2.0-beta3 - 2025-11-26
+-------------------------
 
 Added
 ~~~~~
+- The socket cache now keeps a deque (list) of sockets for each destination making it possible to have multiple sockets open for busy servers. A new ``index`` label has been added to the socket metrics, and a new ``dnsexp_socket_count_total`` metric has been introduced to track the number of sockets.
+
+Fixed
+~~~~~
+- Truncated responses are no longer interpreted as successful. A new failure mode ``response_truncated`` has been introduced in the ``dnsexp_failure_reason`` metric to count truncated responses.
+
+Changed
+~~~~~~~
+- Some refactoring was done to ensure sockets are always closed when connection reuse is in use.
+- The ``udptcp`` protocol was refactored to be easier to understand and test.
+- Add timeout to all requests calls in tests.
+- Handle ``httpx.ReadTimeout`` in addition to ``httpx.ConnectTimeout`` exceptions in DoH code.
+
+
+v1.2.0-beta2 - 2025-11-17
+-------------------------
+
+Added
+~~~~~
+- A socket cache housekeeping background thread now takes care of deleting old or unused sockets. Three new command-line options were introduced for this, ``--connection-max-age-seconds`` to control when to delete a socket from the socket cache based on age (regardless of when it was last used), ``--connection-max-idle-seconds`` to control when to delete a socket from the socket cache based on when it was last used (regardless of age), and finally ``--connection-cleanup-interval-seconds`` to control the interval in seconds between cleanups.
+
+Fixed
+~~~~~
+- Log message at ``DEBUG`` level instead of ``WARNING`` when a DNS response is not received from a server
+
+
+v1.2.0-beta1 - 2025-11-15
+-------------------------
+
+Fixed
+~~~~~
+-  Socket cache stats was not being updated for protocols doh/doh3/doq
+-  Message about ``connection`` label being enabled or not was logged before
+   logging was configured, so the message was not being shown.
+-  Make the ``udptcp`` tests more reliable.
+
+Changed
+~~~~~~~
+-  Refactor a bit to use self.query rather than pushing the query object around
+
+
+v1.2.0-alpha2 - 2025-11-14
+--------------------------
+
+Added
+~~~~~
+-  Python 3.14 Tox runs.
+-  pytest-rerunfailures test dependency added to retry failing tests
+
+Fixed
+~~~~~
+-  Fix a few corner cases in socket handling revealed on github runners
+-  Skip proxy tests under python 3.14 pending
+   https://github.com/tykling/dns_exporter/issues/202
+
+
+v1.2.0-alpha1 - 2025-11-14
+--------------------------
+
+This release adds a new ``connection_reuse`` config option which (if set to true) will
+try to reuse the socket/connection when doing DNS lookups. This means that TCP/TLS/QUIC
+handshakes no longer need to be done every time (depending on how aggressively the DNS
+server harvests idle connections of course).
+
+The new connection reuse feature is disabled by default, so unless you set
+``connection_reuse`` to true in your config module or scrape jobs there should
+be no difference at all.
+
+A new ``connection`` label can be used to determine if the connection was reused.
+The label will have the value ``new`` or ``reused``. To avoid breaking existing
+dashboards the ``connection`` label is disabled by default and must be explicitly
+enabled by setting the environment variable ``DNSEXP_CONNECTION_LABEL`` to any value
+before starting ``dns_exporter``.
+
+
+Added
+~~~~~
+-  New ``connection_reuse`` configuration option (see above). Defaults to ``False``.
+-  New metrics for the socket cache (related to the connection reuse feature):
+   ``dnsexp_socket_age_seconds``, ``dnsexp_socket_transmit_bytes_total``,
+   ``dnsexp_socket_receive_bytes_total``, ``dnsexp_socket_uses_total``.
+   All four metrics are gauges with the following labels: ``protocol``,
+   ``server``, ``ip``, ``verify``, ``proxy``
 -  A Docker compose file is now included in the root of the project.
 
 Fixed
 ~~~~~
 
--  Specifying ``valid_rcodes`` as a URL querystring parameter did not work, bug fixed and regression test added.
--  The ``fail_if_none_matches`` RR validator was broken for non-failing cases. Fixed in #174, thanks @bb-Ricardo!
--  The ``recursion_desired`` option did not actually disable ``RD`` when set to false. Fixed in #176, thanks @hp0724!
+-  Specifying ``valid_rcodes`` as a URL querystring parameter did not work,
+   bug fixed and regression test added.
+-  The ``fail_if_none_matches`` RR validator was broken for non-failing cases.
+   Fixed in #174, thanks @bb-Ricardo!
+-  The ``recursion_desired`` option did not actually disable ``RD`` when set to false.
+   Fixed in #176, thanks @hp0724!
 
 Changed
 ~~~~~~~

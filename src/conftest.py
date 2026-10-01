@@ -1,17 +1,21 @@
 """pytest fixtures file for the dns_exporter project."""
 
+import os
 import subprocess
 import time
 from http.server import HTTPServer
 from pathlib import Path
 from threading import Thread
 
+import dns.message
 import httpx
 import pytest
 import yaml
 
+from dns_exporter.config import Config, ConfigDict
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
+from dns_exporter.metrics import QTIME_LABELS
 
 
 @pytest.fixture
@@ -38,6 +42,9 @@ def dns_exporter_no_main_no_config():
         pytest.fail("Unable to create test instance on 127.0.0.1:45353")
     yield
     print("Beginning teardown")
+    # give pytest some time to flush logging from background threads,
+    # so it doesn't occationally leak to stdout after the pytest result summary
+    time.sleep(5)
 
 
 @pytest.fixture(scope="session")
@@ -55,6 +62,9 @@ def dns_exporter_example_config():
         pytest.fail("Unable to create test instance on 127.0.0.1:25353")
     yield
     print("Beginning teardown")
+    # give pytest some time to flush logging from background threads,
+    # so it doesn't occationally leak to stdout after the pytest result summary
+    time.sleep(5)
 
 
 @pytest.fixture(scope="session")
@@ -63,7 +73,7 @@ def dns_exporter_main_no_config_no_debug():
     print("Running server with no config on 127.0.0.1:35353 ...")
     thread = Thread(
         target=main,
-        args=(["-p", "35353"],),
+        args=(["-p", "35353", "--connection-cleanup-interval-seconds", "0"],),
     )
     thread.daemon = True
     thread.start()
@@ -72,6 +82,9 @@ def dns_exporter_main_no_config_no_debug():
         pytest.fail("Unable to create test instance on 127.0.0.1:35353")
     yield
     print("Beginning teardown")
+    # give pytest some time to flush logging from background threads,
+    # so it doesn't occationally leak to stdout after the pytest result summary
+    time.sleep(5)
 
 
 @pytest.fixture
@@ -91,6 +104,30 @@ def dns_exporter_param_config(request):
     yield
     print(f"Stopping dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
     proc.terminate()
+    time.sleep(5)
+
+
+@pytest.fixture(scope="session")
+def dns_exporter_example_config_connection_label():
+    """Run a server with main() and with the example config with the connection label feature on."""
+    print("Running server with example config and connection label feature on 127.0.0.1:15355 ...")
+    os.environ["DNSEXP_CONNECTION_LABEL"] = "1"
+    os.environ["COVERAGE_PROCESS_START"] = "1"
+    # note: if running with stdout=subprocess.PIPE and debug mode the buffer can
+    # get full which will hang the process with no further explanation.
+    proc = subprocess.Popen(args=["dns_exporter", "-d", "-p", "15355"])
+    time.sleep(2)
+    if proc.poll():
+        # process didn't start properly, bail out
+        pytest.fail(
+            "Unable to create test instance on 127.0.0.1:15355",
+        )
+    yield
+    print("Stopping dns_exporter with connection label feature enabled on 127.0.0.1:15355 ...")
+    proc.terminate()
+    time.sleep(5)
+    del os.environ["DNSEXP_CONNECTION_LABEL"]
+    del os.environ["COVERAGE_PROCESS_START"]
 
 
 @pytest.fixture
@@ -225,4 +262,76 @@ def mock_dns_query_httpx_connecttimeout(mocker):
     mocker.patch(
         "dns.query.https",
         side_effect=httpx.ConnectTimeout("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_get_dns_response_tcp_eoferror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response_tcp() to raise EOFError."""
+    mocker.patch(
+        "dns.query.tcp",
+        side_effect=EOFError("EOF"),
+    )
+
+
+@pytest.fixture
+def config(exporter):
+    """Return a dns_exporter.config.Config object."""
+    prepared = exporter.prepare_config(
+        ConfigDict(
+            server="dns.google",
+            query_name="example.com",
+        )
+    )
+    return Config.create(name="test", **prepared)
+
+
+@pytest.fixture
+def query():
+    """Return a QueryMessage."""
+    return dns.message.QueryMessage(id=42)
+
+
+@pytest.fixture
+def labels():
+    """Return a dict of labels."""
+    labels: dict[str, str] = {}
+    for key in [*QTIME_LABELS, "server", "ip", "port", "protocol", "family", "proxy", "query_name", "query_type"]:
+        labels[key] = "none"
+    return labels
+
+
+@pytest.fixture
+def mock_get_dns_response_connectionrefusederror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response() to raise ConnectionRefusedError."""
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response",
+        side_effect=ConnectionRefusedError("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_get_dns_response_oserror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response() to raise OSError."""
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response",
+        side_effect=OSError("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_dns_query_https_httx_writeerror(mocker):
+    """Monkeypatch dns.query.https() to raise httpx.WriteError."""
+    mocker.patch(
+        "dns.query.https",
+        side_effect=httpx.WriteError("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_socket_close_oserror(mocker):
+    """Monkeypatch dns.query.https() to raise httpx.WriteError."""
+    mocker.patch(
+        "socket.socket.close",
+        side_effect=OSError("mocked"),
     )
